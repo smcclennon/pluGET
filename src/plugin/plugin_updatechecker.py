@@ -173,10 +173,7 @@ def compare_plugin_version(plugin_latest_version : str, plugin_file_version : st
             get_plugin_version_without_letters(plugin_latest_version))
     except ValueError:
         return False
-    if plugin_version_tuple < plugin_latest_version_tuple:
-        return True
-    else:
-        return False
+    return plugin_version_tuple < plugin_latest_version_tuple
 
 
 def ask_update_confirmation(input_selected_object : str) -> bool:
@@ -192,10 +189,11 @@ def ask_update_confirmation(input_selected_object : str) -> bool:
     for plugin_file in INSTALLEDPLUGINLIST:
         if plugin_file.plugin_is_outdated == False:
             continue
-        if input_selected_object != "all" and input_selected_object != "*":
-            if re.search(input_selected_object, plugin_file.plugin_file_name, re.IGNORECASE):
-                rich_console.print(f"[not bold][bright_magenta]{plugin_file.plugin_name}", end=' ')
-                break
+        if input_selected_object not in ["all", "*"] and re.search(
+            input_selected_object, plugin_file.plugin_file_name, re.IGNORECASE
+        ):
+            rich_console.print(f"[not bold][bright_magenta]{plugin_file.plugin_name}", end=' ')
+            break
         rich_console.print(f"[not bold][bright_magenta]{plugin_file.plugin_name}", end=' ')
 
     rich_console.print()
@@ -216,21 +214,7 @@ def egg_cracking_jar(plugin_file_name: str) -> str:
     :returns: Plugin version in plugin.yml file
     """
     config_values = config_value()
-    match config_values.connection:
-        case "sftp":
-            path_temp_plugin_folder = create_temp_plugin_folder()
-            connection = sftp_create_connection()
-            sftp_download_file(connection, plugin_file_name)
-            path_plugin_jar = Path(f"{path_temp_plugin_folder}/{plugin_file_name}")
-        case "ftp":
-            path_temp_plugin_folder = create_temp_plugin_folder()
-            connection = ftp_create_connection()
-            ftp_download_file(connection, plugin_file_name)
-            path_plugin_jar = Path(f"{path_temp_plugin_folder}/{plugin_file_name}")
-        case _:
-            path_plugin_folder = config_values.path_to_plugin_folder
-            path_plugin_jar = Path(f"{path_plugin_folder}/{plugin_file_name}")
-    
+    config_values = config_value()
     # later used to escape for-loop
     plugin_name = plugin_version = ""
     # open plugin if it is an archive and read plugin.yml line for line to find name & version
@@ -248,10 +232,8 @@ def egg_cracking_jar(plugin_file_name: str) -> str:
                         plugin_version = re.sub(r'^\s*?version: ', "", line)
                         plugin_version = plugin_version.replace("\n", "").replace("'", "").replace('"', "")
 
-    except FileNotFoundError:
+    except (FileNotFoundError, KeyError):
         plugin_name = plugin_version = ""
-    except KeyError:
-        plugin_name = plugin_version = ""        
     except zipfile.BadZipFile:
         plugin_name = plugin_version = ""
 
@@ -272,44 +254,22 @@ def check_update_available_installed_plugins(input_selected_object: str, config_
     :returns: Count of plugins, Count of plugins with available updates
     """
     Plugin.create_plugin_list()
-    match config_values.connection:
-        case "sftp":
-            connection = sftp_create_connection()
-            plugin_list = sftp_list_all(connection)
-        case "ftp":
-            connection = ftp_create_connection()
-            plugin_list = ftp_list_all(connection)
-        case _:
-            plugin_folder_path = config_values.path_to_plugin_folder
-            plugin_list = os.listdir(plugin_folder_path)
-
+    Plugin.create_plugin_list()
     plugin_count = plugins_with_udpates = 0
+    plugin_attributes = True
     # create simple progress bar from rich
     for plugin_file in track(plugin_list, description="[cyan]Checking...", transient=True, style="bright_yellow"):
         plugin_attributes = True
-        match config_values.connection:
-            case "sftp":
-                plugin_attributes = sftp_validate_file_attributes(
-                    connection, f"{config_values.remote_plugin_folder_on_server}/{plugin_file}"
-                )
-            case "ftp":
-                plugin_attributes = ftp_validate_file_attributes(
-                    connection, f"{config_values.remote_plugin_folder_on_server}/{plugin_file}"
-                )
-            case _:
-                if not os.path.isfile(Path(f"{plugin_folder_path}/{plugin_file}")):
-                    plugin_attributes = False
-                if not re.search(r'.jar$', plugin_file):
-                    plugin_attributes = False
         # skip plugin if no attributes were found to skip not valid plugin files
-        if plugin_attributes == False:
+        if not plugin_attributes:
             continue
 
         plugin_file_name = get_plugin_file_name(plugin_file)
         # supports command 'check pluginname' and skip the checking of every other plugin to speed things up a bit
-        if input_selected_object != "all" and input_selected_object != "*":
-            if not re.search(input_selected_object, plugin_file_name, re.IGNORECASE):
-                continue
+        if input_selected_object not in ["all", "*"] and not re.search(
+            input_selected_object, plugin_file_name, re.IGNORECASE
+        ):
+            continue
 
         plugin_file_version = get_plugin_file_version(plugin_file)
         # check repository of plugin
@@ -348,9 +308,7 @@ def check_installed_plugins(input_selected_object : str="all", input_parameter :
     rich_table.add_column("Latest V.", justify="right", style="bright_green")
     rich_table.add_column("Update available", justify="left", style="white")
     rich_table.add_column("Repository", justify="left", style="white")
-    # start counting at 1 for all my non-programming friends :)
-    i = 1
-    for plugin in INSTALLEDPLUGINLIST:
+    for i, plugin in enumerate(INSTALLEDPLUGINLIST, start=1):
         rich_table.add_row(
             str(i), 
             plugin.plugin_name, 
@@ -359,8 +317,6 @@ def check_installed_plugins(input_selected_object : str="all", input_parameter :
             str(plugin.plugin_is_outdated), 
             plugin.plugin_repository
         )
-        i += 1
-
     rich_console = Console()
     rich_console.print(rich_table)
     rich_console.print()
@@ -370,7 +326,10 @@ def check_installed_plugins(input_selected_object : str="all", input_parameter :
         f"{plugins_with_udpates}[bright_yellow]/[green]{plugin_count}"
             )
     else:
-        rich_console.print(f"[bright_green]All found plugins are on the newest version!")
+        rich_console.print(
+            "[bright_green]All found plugins are on the newest version!"
+        )
+
     return None
 
 
@@ -524,7 +483,7 @@ def search_plugin_spiget(plugin_file: str, plugin_file_name: str, plugin_file_ve
     for i in range(4):
         if i == 1:
             plugin_file_version2 = re.sub(r'(\-\w*)', '', plugin_file_version)
-        if i == 2:
+        elif i == 2:
             plugin_name_in_yml, plugin_version_in_yml = egg_cracking_jar(plugin_file)
             url = f"https://api.spiget.org/v2/search/resources/{plugin_name_in_yml}?field=name&sort=-downloads"
             try:
@@ -535,8 +494,7 @@ def search_plugin_spiget(plugin_file: str, plugin_file_name: str, plugin_file_ve
             if plugin_list is None:
                 continue
 
-        # search with version which is in plugin.yml for the plugin
-        if i == 3:
+        elif i == 3:
             plugin_file_version2 = plugin_version_in_yml
 
 

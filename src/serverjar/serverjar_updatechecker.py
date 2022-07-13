@@ -56,7 +56,7 @@ def check_update_available_installed_server_jar() -> None:
     """
     config_values = config_value()
     file_server_jar_full_name = get_installed_server_jar_file(config_values)
-    if file_server_jar_full_name == None:
+    if file_server_jar_full_name is None:
         # print error and exit function
         rich_print_error("Error: Serverjar couldn't be found")
         return None

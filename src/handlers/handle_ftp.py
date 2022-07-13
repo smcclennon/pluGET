@@ -61,7 +61,7 @@ def ftp_upload_file(ftp, path_item) -> None:
         current_directory = os.getcwd()
         os.chdir('TempSFTPFolder')
         with open (path_item, 'rb') as plugin_file:
-            ftp.storbinary('STOR '+ str(path_item), plugin_file)
+            ftp.storbinary(f'STOR {path_item}', plugin_file)
     except FileNotFoundError:
         rich_print_error("Error: [FTP]: The 'plugins' folder couldn't be found on the remote host!")
         rich_print_error("Error: [FTP]: Aborting uploading.")
@@ -86,7 +86,7 @@ def ftp_upload_server_jar(ftp, path_item) -> None:
         current_directory = os.getcwd()
         os.chdir('TempSFTPFolder')
         with open (path_item, 'rb') as server_jar:
-            ftp.storbinary('STOR '+ str(path_item), server_jar)
+            ftp.storbinary(f'STOR {path_item}', server_jar)
     except FileNotFoundError:
         rich_print_error("Error: [FTP]: The 'root' folder couldn't be found on the remote host!")
         rich_print_error("Error: [FTP]: Aborting uploading.")
@@ -148,9 +148,8 @@ def ftp_download_file(ftp, path_download, file) -> None:
     """
     config_values = config_value()
     ftp.cwd(config_values.remote_plugin_folder_on_server)
-    filedata = open(path_download,'wb')
-    ftp.retrbinary('RETR '+file, filedata.write)
-    filedata.close()
+    with open(path_download,'wb') as filedata:
+        ftp.retrbinary(f'RETR {file}', filedata.write)
     ftp.quit()
     return None
 
@@ -164,10 +163,7 @@ def ftp_is_file(ftp, plugin_path) -> bool:
 
     :returns: True if file is a file and not a directory
     """
-    if ftp.nlst(plugin_path) == [plugin_path]:
-        return True
-    else:
-        return False
+    return ftp.nlst(plugin_path) == [plugin_path]
 
 
 def ftp_validate_file_attributes(ftp, plugin_path) -> bool:
@@ -181,7 +177,4 @@ def ftp_validate_file_attributes(ftp, plugin_path) -> bool:
     """
     if ftp_is_file(ftp, plugin_path) is False:
         return False
-    if re.search(r'.jar$', plugin_path):
-        return True
-    else:
-        return False
+    return bool(re.search(r'.jar$', plugin_path))

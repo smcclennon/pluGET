@@ -116,12 +116,11 @@ def get_input() -> str:
             input_command, input_selected_object, *input_parameter = input("pluGET >> ").split()
             break
         except ValueError:
-            if input_command == None:
+            if input_command is None:
                 # request input again if no input was given or not enough
                 continue
-            else:
-                rich_print_error("Wrong input! Use: > 'command' 'selectedObject' [optionalParams]")
-                rich_print_error("Use: [bright_blue]'help all' [bright_red]to get a list of all available commands.")
+            rich_print_error("Wrong input! Use: > 'command' 'selectedObject' [optionalParams]")
+            rich_print_error("Use: [bright_blue]'help all' [bright_red]to get a list of all available commands.")
         except KeyboardInterrupt:
             return
     input_parameter = input_parameter[0] if input_parameter else None

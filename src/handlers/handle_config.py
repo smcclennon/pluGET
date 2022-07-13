@@ -21,14 +21,16 @@ class config_value():
 			data = yaml.load(config_file)
 		self.connection = str(data["Connection"]).lower()
 		self.path_to_plugin_folder = Path(data["Local"]["PathToPluginFolder"])
-		self.local_seperate_download_path = True if data["Local"]["SeperateDownloadPath"] == True else False
+		self.local_seperate_download_path = (
+		    data["Local"]["SeperateDownloadPath"] == True)
 		self.local_path_to_seperate_download_path = Path(data["Local"]["PathToSeperateDownloadPath"])
 		self.server = data["Remote"]["Server"]
 		self.username = data["Remote"]["Username"]
 		self.password = data["Remote"]["Password"]
 		self.sftp_port = int(data["Remote"]["SFTP_Port"])
 		self.ftp_port = int(data["Remote"]["FTP_Port"])
-		self.remote_seperate_download_path = True if data["Remote"]["SeperateDownloadPath"] == True else False
+		self.remote_seperate_download_path = (
+		    data["Remote"]["SeperateDownloadPath"] == True)
 		self.remote_path_to_seperate_download_path = data["Remote"]["PathToSeperateDownloadPath"]
 		self.remote_plugin_folder_on_server = data["Remote"]["PluginFolderOnServer"]
 

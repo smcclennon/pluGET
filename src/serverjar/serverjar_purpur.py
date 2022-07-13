@@ -30,10 +30,7 @@ def find_latest_available_version(version_group) -> int:
     """
     url = f"https://api.purpurmc.org/v2/purpur/{version_group}/"
     versions = api_do_request(url)
-    if "status" in versions: # Checks if the API returns a status. This means that there was an error.
-        return None
-    latest_version = versions["builds"]["all"][-1]
-    return latest_version
+    return None if "status" in versions else versions["builds"]["all"][-1]
 
 
 def get_purpur_download_file_name(mc_version, serverjar_version) -> str:
@@ -51,8 +48,7 @@ def get_purpur_download_file_name(mc_version, serverjar_version) -> str:
     purpur_build_version = build_details["build"]
     purpur_project_name = build_details["project"]
     purpur_mc_version = build_details["version"]
-    download_name = f"{purpur_project_name}-{purpur_mc_version}-{purpur_build_version}.jar"
-    return download_name
+    return f"{purpur_project_name}-{purpur_mc_version}-{purpur_build_version}.jar"
 
 
 def serverjar_purpur_check_update(file_server_jar_full_name) -> None:
@@ -64,19 +60,19 @@ def serverjar_purpur_check_update(file_server_jar_full_name) -> None:
     :returns: None
     """
     serverjar_version = get_installed_serverjar_version(file_server_jar_full_name)
-    if serverjar_version == None:
+    if serverjar_version is None:
         rich_print_error("Error: An error occured while checking the installed serverjar version")
         return None
 
     version_group = get_version_group(file_server_jar_full_name)
-    if version_group == None:
+    if version_group is None:
         rich_print_error(
             "Error: An error occured while checking the installed version group of the installed serverjar"
         )
         return None
 
     latest_version = find_latest_available_version(version_group)
-    if latest_version == None:
+    if latest_version is None:
         rich_print_error("Error: An error occured while checking for the latest available version of the serverjar")
         return None
 
@@ -115,28 +111,19 @@ def serverjar_purpur_update(
     :returns: True/False if the serverjar was downloaded successfully
     """
     config_values = config_value()
-    match config_values.connection:
-        case "local":
-            path_server_root = config_values.path_to_plugin_folder
-            # need help_path or else TypeError will be thrown
-            help_path = Path('/plugins')
-            help_path_str = str(help_path)
-            path_server_root = Path(str(path_server_root).replace(help_path_str, ''))
-        case _:
-            path_server_root = create_temp_plugin_folder()
-
+    config_values = config_value()
     # exit if the mc version can't be found
-    if file_server_jar_full_name == None and mc_version == None:
+    if file_server_jar_full_name is None and mc_version is None:
         rich_print_error("Error: Please specifiy the minecraft version as third argument!")
         return False
 
-    if mc_version == None:
+    if mc_version is None:
         mc_version = get_version_group(file_server_jar_full_name)
 
-    if server_jar_version == "latest" or server_jar_version == None:
+    if server_jar_version == "latest" or server_jar_version is None:
         server_jar_version = find_latest_available_version(mc_version)
 
-    if file_server_jar_full_name == None:
+    if file_server_jar_full_name is None:
         serverjar_name = "purpur"
     else:
         serverjar_name = file_server_jar_full_name
@@ -193,8 +180,13 @@ def serverjar_purpur_update(
 
 
     file_size_data = convert_file_size_down(convert_file_size_down(file_size))
-    rich_console.print("    [not bold][bright_green]Downloaded[bright_magenta] " + (str(file_size_data)).rjust(9) + \
-        f" MB [cyan]→ [white]{download_path}")
+    rich_console.print(
+        (
+            f"    [not bold][bright_green]Downloaded[bright_magenta] {(str(file_size_data)).rjust(9)}"
+            + f" MB [cyan]→ [white]{download_path}"
+        )
+    )
+
 
     if config_values.connection == "sftp":
         sftp_session = sftp_create_connection()
